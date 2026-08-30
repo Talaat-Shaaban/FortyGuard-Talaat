@@ -1,0 +1,296 @@
+{
+  "name": "Api FortyGuard",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.fortyguard.com/v1/heatmap",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"polygon_aoi\": {{ JSON.stringify($json.polygon_aoi) }},\n  \"date_time\": {\n    \"start_date\": \"{{ $json.start_date }}\",\n    \"start_time\": \"{{ $json.start_time }}\",\n    \"filter_type\": 1\n  },\n  \"granularity\": 100\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        688,
+        0
+      ],
+      "id": "eec7d7b4-1674-4c0d-868e-d4f2f06959b4",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QRn8mCFtLQfz26q2",
+          "name": "FortyGuard API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.fortyguard.com/v1/status/{{ $json.data.activity_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1168,
+        0
+      ],
+      "id": "f696a9c0-3fbf-4f6f-9003-b5dd9d62ee6c",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QRn8mCFtLQfz26q2",
+          "name": "FortyGuard API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ca2dea3d-4d6d-43c8-9a76-da493640d336",
+              "name": "average_temperature",
+              "value": "={{ $json.data.result.map_data.features[0].properties.average_temperature }}",
+              "type": "number"
+            },
+            {
+              "id": "ef0cf998-a493-4142-a5f3-042748333b61",
+              "name": "min_temperature",
+              "value": "={{ $json.data.result.map_data.features[0].properties.min_temperature }}",
+              "type": "number"
+            },
+            {
+              "id": "688895d1-59b0-4d08-8962-647bee5d6e7f",
+              "name": "max_temperature",
+              "value": "={{ $json.data.result.map_data.features[0].properties.max_temperature }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1632,
+        -16
+      ],
+      "id": "6a28bae3-896d-4d25-aec6-1081fe0723cb",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        944,
+        0
+      ],
+      "id": "dcc61ce9-95c1-4541-85d6-4a219985e699",
+      "name": "Wait",
+      "webhookId": "96754f0f-f7b5-4234-a47e-fee8946f8011"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7a0d94fb-7604-45e1-8a91-464af6f1a1bd",
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "Completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "80312d40-a003-4f35-959e-1cd1c3ee08d6",
+              "leftValue": "={{ $json.data.result.stats_data.n_cells }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "efd53545-45bc-4d1f-87be-48a84f0a8d2c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "latitude",
+              "type": "number"
+            },
+            {
+              "name": "longitude",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        144,
+        0
+      ],
+      "id": "db0b8b98-45ad-4f7d-9785-816078129fa3",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lat = $json.latitude;\nconst lon = $json.longitude;\nconst offset = 0.05;\n\n// 1. دالة تقدير المنطقة الزمنية في الولايات المتحدة بناءً على خط الطول (Longitude)\nfunction getTimezone(lng) {\n  if (lng > -85.0) return 'America/New_York';       // Eastern Time (ET)\n  if (lng > -103.0) return 'America/Chicago';      // Central Time (CT)\n  if (lng > -114.0) return 'America/Denver';       // Mountain Time (MT)\n  return 'America/Los_Angeles';                    // Pacific Time (PT)\n}\n\n// 2. تحديد المنطقة الزمنية وحساب الوقت والتاريخ المحلي للمزارع\nconst userTimezone = getTimezone(lon);\n//const localTime = DateTime.now().setZone(userTimezone);\nconst localTime = DateTime.now().setZone(userTimezone).minus({ hours: 3 });\n\nreturn [{\n  json: {\n    latitude: lat,\n    longitude: lon,\n    timezone: userTimezone,\n    start_date: localTime.toFormat('yyyy-MM-dd'),\n    start_time: localTime.toFormat('HH:00'),\n    polygon_aoi: {\n      type: \"FeatureCollection\",\n      features: [{\n        type: \"Feature\",\n        properties: {},\n        geometry: {\n          type: \"Polygon\",\n          coordinates: [[\n            [lon - offset, lat - offset],\n            [lon + offset, lat - offset],\n            [lon + offset, lat + offset],\n            [lon - offset, lat + offset],\n            [lon - offset, lat - offset]\n          ]]\n        }\n      }]\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "83ecfe27-2a62-4b81-a60c-68ba5e9f8448",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "content": "# Retrieving the temperature from the FortyGuard API",
+        "height": 304,
+        "width": 1232,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        336,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "00f35137-fb96-453e-8cc7-daa79939d8da",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Chicago",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "58515c48-bbed-479f-8046-59f809365d3f",
+  "meta": {
+    "instanceId": "505fbda16e47c4a6701ac746484306a065aaf70608199a31f2043e37fdccd377"
+  },
+  "nodeGroups": [],
+  "id": "hD8cZ7fY7CVjZlTA",
+  "tags": [
+    {
+      "updatedAt": "2026-08-12T17:59:19.026Z",
+      "createdAt": "2026-08-12T17:59:19.026Z",
+      "id": "d0NmGQgaMPEDlcqK",
+      "name": "المسابقة"
+    }
+  ]
+}

@@ -1,0 +1,588 @@
+{
+  "name": "Send daily alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=https://api.fortyguard.com/v1/status/{{ $json.data.activity_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1424,
+        -224
+      ],
+      "id": "0fd04d7a-b5fc-41af-a8aa-bf1c03cbe98c",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QRn8mCFtLQfz26q2",
+          "name": "FortyGuard API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ca2dea3d-4d6d-43c8-9a76-da493640d336",
+              "name": "average_temperature",
+              "value": "={{ $json.data.result.map_data.features[0].properties.average_temperature }}",
+              "type": "number"
+            },
+            {
+              "id": "ef0cf998-a493-4142-a5f3-042748333b61",
+              "name": "min_temperature",
+              "value": "={{ $json.data.result.map_data.features[0].properties.min_temperature }}",
+              "type": "number"
+            },
+            {
+              "id": "688895d1-59b0-4d08-8962-647bee5d6e7f",
+              "name": "max_temperature",
+              "value": "={{ $json.data.result.map_data.features[0].properties.max_temperature }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1968,
+        -240
+      ],
+      "id": "2cc6a92b-f45a-48f6-a0fe-a66224b4df9c",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7a0d94fb-7604-45e1-8a91-464af6f1a1bd",
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "Completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1648,
+        -224
+      ],
+      "id": "3894dad3-d534-4a67-a732-0023a2936b8a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.fortyguard.com/v1/heatmap",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"polygon_aoi\": {{ JSON.stringify($json.polygon_aoi) }},\n  \"date_time\": {\n    \"start_date\": \"{{ $json.start_date }}\",\n    \"start_time\": \"{{ $json.start_time }}\",\n    \"filter_type\": 1\n  },\n  \"granularity\": 100\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        912,
+        -224
+      ],
+      "id": "5ac15b5d-47b5-4e90-98d7-18a86faf4f8b",
+      "name": "HTTP Request2",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QRn8mCFtLQfz26q2",
+          "name": "FortyGuard API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        -224
+      ],
+      "id": "a54cefbd-d7aa-4f36-82bb-ccba045eb44e",
+      "name": "Wait1",
+      "webhookId": "96754f0f-f7b5-4234-a47e-fee8946f8011"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. تحويل الإحداثيات صراحة إلى أرقام (Numbers) لتجنب كسر الـ JSON\nconst lat = Number($json.latitude);\nconst lon = Number($json.longitude);\nconst offset = 0.05;\n\n// 2. دالة تقدير المنطقة الزمنية في الولايات المتحدة بناءً على خط الطول\nfunction getTimezone(lng) {\n  if (lng > -85.0) return 'America/New_York';       // Eastern Time (ET)\n  if (lng > -103.0) return 'America/Chicago';      // Central Time (CT)\n  if (lng > -114.0) return 'America/Denver';       // Mountain Time (MT)\n  return 'America/Los_Angeles';                    // Pacific Time (PT)\n}\n\n// 3. تحديد المنطقة الزمنية وحساب الوقت والتاريخ المحلي للمزارع (مع خصم 3 ساعات لضمان توفر البيانات)\nconst userTimezone = getTimezone(lon);\nconst localTime = DateTime.now().setZone(userTimezone).minus({ hours: 3 });\n\n// 4. إرجاع النتيجة مع حساب الإحداثيات كأرقام رياضية خالية من النص\nreturn [{\n  json: {\n    latitude: lat,\n    longitude: lon,\n    timezone: userTimezone,\n    start_date: localTime.toFormat('yyyy-MM-dd'),\n    start_time: localTime.toFormat('HH:00'),\n    polygon_aoi: {\n      type: \"FeatureCollection\",\n      features: [{\n        type: \"Feature\",\n        properties: {},\n        geometry: {\n          type: \"Polygon\",\n          coordinates: [[\n            [Number((lon - offset).toFixed(6)), Number((lat - offset).toFixed(6))],\n            [Number((lon + offset).toFixed(6)), Number((lat - offset).toFixed(6))],\n            [Number((lon + offset).toFixed(6)), Number((lat + offset).toFixed(6))],\n            [Number((lon - offset).toFixed(6)), Number((lat + offset).toFixed(6))],\n            [Number((lon - offset).toFixed(6)), Number((lat - offset).toFixed(6))]\n          ]]\n        }\n      }]\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -224
+      ],
+      "id": "40cb7d6f-e19a-40c3-8976-a306047e247d",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -128,
+        -240
+      ],
+      "id": "98aa4de1-15d3-4a45-ab2f-94a4f2a04bab",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0",
+          "mode": "list",
+          "cachedResultName": "Farmers' Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        112,
+        -240
+      ],
+      "id": "873fcacd-0632-400b-b833-f13f396130d7",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6eUHcMYvQxkvSift",
+          "name": "SheetCloud2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        336,
+        -240
+      ],
+      "id": "964c6e07-6707-4d9b-ab3f-7e218380cbaa",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get farmer data from the current loop item\nconst farmerData = $(\"Loop Over Items1\").item.json;\nconst farmerName = farmerData.Name || \"Farmer\";\nconst userCrops = farmerData.crops || \"\";\n\n// 2. Extract Data from original source & Dynamic Timezone from HTTP Request\nconst responseData = $input.item.json;\n\n// قراءة درجة الحرارة من مصدرك الأصلي المعتمد (وليس من weather API الجديد)\nlet tempC = responseData.average_temperature ?? responseData.temperature ?? responseData.temp;\n\nif (tempC === undefined || tempC === null) {\n  const dataRoot = responseData.body || responseData.data || responseData;\n  tempC = dataRoot.average_temperature ?? dataRoot.temperature ?? dataRoot.temp ?? 25;\n}\n\ntempC = Number(Number(tempC).toFixed(1));\nconst tempF = (tempC * 9/5 + 32).toFixed(1);\n\n// استخراج المنطقة الزمنية فقط من عقدة الـ HTTP Request (مثل America/Los_Angeles)\nconst userTimeZone = responseData.timezone || farmerData.timezone || 'America/Chicago';\n\n// حساب الوقت والتاريخ المحلي الخاصين بموقع المزارع الجغرافي\nconst now = new Date();\nconst optionsDate = { timeZone: userTimeZone, year: 'numeric', month: '2-digit', day: '2-digit' };\nconst optionsTime = { timeZone: userTimeZone, hour: '2-digit', minute: '2-digit', hour12: true };\n\nconst reportDate = new Intl.DateTimeFormat('en-CA', optionsDate).format(now); // YYYY-MM-DD\nconst reportTime = new Intl.DateTimeFormat('en-US', optionsTime).format(now); // hh:mm AM/PM\n\n// 3. Process Temperature History (Maintains a rolling 7-day history window)\nlet history = [];\ntry {\n  history = farmerData.temperature_history ? JSON.parse(farmerData.temperature_history) : [];\n} catch (e) {\n  history = [];\n}\nhistory.push(tempC);\nif (history.length > 7) history.shift();\n\nconst n = history.length;\nconst meanTempC = (history.reduce((a, b) => a + b, 0) / n);\nconst meanTempF = (meanTempC * 9/5 + 32).toFixed(1);\n\nconst variance = history.reduce((sum, val) => sum + Math.pow(val - meanTempC, 2), 0) / (n || 1);\nconst stdDev = Math.sqrt(variance);\nconst zScoreNum = stdDev > 0 ? ((tempC - meanTempC) / stdDev) : 0;\nconst zScoreDisplay = zScoreNum.toFixed(2);\nconst heatSpikeAlert = zScoreNum > 1.5 ? \"Sudden Heat Spike Detected\" : \"Normal Variation\";\n\nlet trend = \"Stable\";\nif (tempC > meanTempC + 1.5) trend = \"Sharply Rising\";\nelse if (tempC > meanTempC) trend = \"Slightly Increasing\";\nelse if (tempC < meanTempC - 1.5) trend = \"Cooling Down\";\n\n// ---- Normal CDF helpers ----\nfunction erf(x) {\n  const sign = x < 0 ? -1 : 1;\n  x = Math.abs(x);\n  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741,\n        a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;\n  const t = 1 / (1 + p * x);\n  const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);\n  return sign * y;\n}\nfunction normalCDF(z) { return 0.5 * (1 + erf(z / Math.sqrt(2))); }\nfunction computeRiskProbability(thresholdC, meanTempC, stdDev) {\n  const safeStdDev = stdDev > 0.1 ? stdDev : 0.5;\n  const z = (thresholdC - meanTempC) / safeStdDev;\n  const prob = Math.round((1 - normalCDF(z)) * 100);\n  return Math.max(1, Math.min(prob, 99));\n}\n\n// 4. Scientific Thresholds\nconst benchmarks = {\n  \"corn\": { stressC: 30, stressF: 86, impact: \"pollen viability loss\", action: \"Run pre-cooling irrigation before 8:00 AM.\" },\n  \"tomatoes\": { stressC: 29, stressF: 85, impact: \"blossom drop and sunscald\", action: \"Deploy 30% shade netting and mulch the soil.\" },\n  \"soybeans\": { stressC: 32, stressF: 90, impact: \"pod abortion\", action: \"Apply surface irrigation, avoid peak-hour fertilizing.\" },\n  \"lettuce\": { stressC: 24, stressF: 75, impact: \"early bolting\", action: \"Activate overhead misting.\" },\n  \"strawberries\": { stressC: 26, stressF: 78, impact: \"fruit softening\", action: \"Run drip irrigation and root-zone cooling.\" },\n  \"dairy cows\": { stressC: 25, stressF: 77, impact: \"milk yield drop\", action: \"Turn on barn misting/fans, add shade and cool water.\" },\n  \"beef cattle\": { stressC: 28, stressF: 82, impact: \"reduced feed intake\", action: \"Feed early morning/evening, provide shaded area.\" }\n};\n\n// 5. Analyze each crop/livestock item\nlet statsPerItem = [];\nlet maxProbability = 0;\nlet totalCumulativeHeat = 0;\n\nconst parsedItems = userCrops.split(/,|and|\\+/).map(i => i.trim().toLowerCase()).filter(Boolean);\n\nparsedItems.forEach(itemKey => {\n  const matchedKey = Object.keys(benchmarks).find(b => itemKey.includes(b));\n  const displayName = itemKey.charAt(0).toUpperCase() + itemKey.slice(1);\n  const rule = matchedKey ? benchmarks[matchedKey] : { stressC: 28, stressF: 82, impact: \"general heat stress\", action: \"Ensure irrigation or shade.\" };\n\n  let cumulativeHeat = 0;\n  history.forEach(t => { if (t > rule.stressC) cumulativeHeat += (t - rule.stressC); });\n  if (cumulativeHeat > totalCumulativeHeat) totalCumulativeHeat = cumulativeHeat;\n\n  const prob = computeRiskProbability(rule.stressC, meanTempC, stdDev);\n  if (prob > maxProbability) maxProbability = prob;\n\n  const isStressed = tempC >= rule.stressC;\n\n  let level = \"green\";\n  if (isStressed || prob >= 66) level = \"red\";\n  else if (prob >= 31) level = \"yellow\";\n\n  statsPerItem.push({\n    name: displayName,\n    type: matchedKey || \"general\",\n    thresholdC: rule.stressC,\n    thresholdF: rule.stressF,\n    isStressed,\n    riskProbability: prob,\n    level,\n    impact: rule.impact,\n    action: rule.action,\n    cumulativeHeat: Number(cumulativeHeat.toFixed(1))\n  });\n});\n\n// Sort by severity: red first, then yellow, then green\nconst levelOrder = { red: 0, yellow: 1, green: 2 };\nstatsPerItem.sort((a, b) => levelOrder[a.level] - levelOrder[b.level]);\n\n// 6. Build SIMPLE farmer-facing message\nconst emojiFor = { red: \"🔴\", yellow: \"🟡\", green: \"🟢\" };\nconst lines = statsPerItem.map(item => {\n  const emoji = emojiFor[item.level];\n  if (item.level === \"red\") {\n    return `${emoji} ${item.name}: Heat Risk — ${item.action}`;\n  } else if (item.level === \"yellow\") {\n    return `${emoji} ${item.name}: Monitor — ${item.riskProbability}% heat stress risk within 48h`;\n  } else {\n    return `${emoji} ${item.name}: Safe — No immediate action required`;\n  }\n});\n\nconst simpleMessage = `🌾 Daily Thermal Bulletin for ${farmerName}\n📅 Date: ${reportDate} | Time: ${reportTime}\n🌡️ Current Temp: ${tempC}°C (${tempF}°F)\n\n${lines.join(\"\\n\")}\n\n📊 For detailed analytics & historical trends, check your dashboard.`;\n\n// 7. Build DETAILED statistical payload (For Google Sheet / Dashboard Webpage)\nconst dashboardPayload = {\n  farmerId: farmerData.Id,\n  farmerName: farmerName,\n  timestamp: now.toISOString(),\n  localDate: reportDate,\n  localTime: reportTime,\n  timezone: userTimeZone,\n  currentTempC: tempC,\n  currentTempF: Number(tempF),\n  temperatureHistory: history,\n  movingAverageC: Number(meanTempC.toFixed(1)),\n  movingAverageF: Number(meanTempF),\n  trend: trend,\n  zScore: Number(zScoreDisplay),\n  heatAnomalyStatus: heatSpikeAlert,\n  cumulativeThermalStress: Number(totalCumulativeHeat.toFixed(1)),\n  maxRiskProbability: maxProbability,\n  items: statsPerItem\n};\n\nreturn {\n  json: {\n    chat_id: farmerData.Id,\n    updated_history: JSON.stringify(history),\n    message: simpleMessage,\n    dashboard_data: JSON.stringify(dashboardPayload)\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        -240
+      ],
+      "id": "f7c0aea0-cb75-4033-9ee7-c31bc32e34ae",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0",
+          "mode": "list",
+          "cachedResultName": "Farmers' Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Id": "={{ $(\"Loop Over Items1\").item.json.Id }}",
+            "temperature_history": "={{ $json.updated_history }}"
+          },
+          "matchingColumns": [
+            "Id"
+          ],
+          "schema": [
+            {
+              "id": "Id",
+              "displayName": "Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "crops",
+              "displayName": "crops",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "longitude",
+              "displayName": "longitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "latitude",
+              "displayName": "latitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "temperature_history",
+              "displayName": "temperature_history",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "token",
+              "displayName": "token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2688,
+        0
+      ],
+      "id": "2c4f8dc1-cb36-454f-8eba-11706ba11db2",
+      "name": "Update row in sheet2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6eUHcMYvQxkvSift",
+          "name": "SheetCloud2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get row(s) in sheet1').item.json.Id }}",
+        "text": "={{ $('Code in JavaScript3').item.json.message }}\n\n<b><a href=\"https://dashboard.talaatsha.cfd/?token={{ $('Get row(s) in sheet1').item.json.token }}\">View Control Panel</a></b>",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2960,
+        0
+      ],
+      "id": "23cc5e80-d885-439b-92e6-e6148e18facb",
+      "name": "Send a text message2",
+      "webhookId": "3f767abc-4e9f-409e-adcd-12c8eca4cb9e",
+      "credentials": {
+        "telegramApi": {
+          "id": "tPSRrBeW3iDPKoVJ",
+          "name": "CropGuard"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.open-meteo.com/v1/forecast?latitude={{ $('Get row(s) in sheet1').item.json.latitude }}&longitude={{ $('Get row(s) in sheet1').item.json.longitude }}&current_weather=true&timezone=auto",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2192,
+        -240
+      ],
+      "id": "bf8eb51e-b5c5-4e63-89b4-e88c3361c469",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "content": "# Retrieving the temperature from the FortyGuard API",
+        "height": 384,
+        "width": 1328,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        544,
+        -336
+      ],
+      "typeVersion": 1,
+      "id": "8ab91c4d-ec71-4034-b476-6b1134466c06",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Chicago",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "d7fa85ad-5e70-4355-b317-8d02d797a089",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "505fbda16e47c4a6701ac746484306a065aaf70608199a31f2043e37fdccd377"
+  },
+  "nodeGroups": [],
+  "id": "pOOFoKT7K5D1dvtX",
+  "tags": [
+    {
+      "updatedAt": "2026-08-12T17:59:19.026Z",
+      "createdAt": "2026-08-12T17:59:19.026Z",
+      "id": "d0NmGQgaMPEDlcqK",
+      "name": "المسابقة"
+    }
+  ]
+}
