@@ -1,9 +1,11 @@
 
+---
+
 # 🌾 Crop Guard – Hyperlocal Agricultural Heat-Stress System
 
 An intelligent, proactive agricultural monitoring and heat-stress mitigation system powered by the **FortyGuard Hyperlocal Temperature API**, **n8n Automation Engine**, **Telegram Integration**, and a **Zero-Login Web Dashboard**.
 
-🤖 **Try the Crop Guard Telegram Bot:** [Click Here to Start Crop Guard]([t.me/cropG1_bot.](https://t.me/cropG1_bot) *(Replace with your actual bot link)*
+🤖 **Try the Crop Guard Telegram Bot:** [Click Here to Start Crop Guard](https://t.me/cropG1_bot) *(Replace with your actual bot link)*
 
 ---
 
