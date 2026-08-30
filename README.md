@@ -1,6 +1,3 @@
-Here is the updated English text with your project name **Crop Guard** integrated:
-
----
 
 # 🌾 Crop Guard – Hyperlocal Agricultural Heat-Stress System
 
