@@ -1,0 +1,164 @@
+{
+  "name": "Dashbord static farmars",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "dashboard-data",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8448924c-ebec-4581-a8f2-caa349208193",
+      "name": "Webhook",
+      "webhookId": "2044e740-3840-45d9-a13e-786658a96cfc"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0",
+          "mode": "list",
+          "cachedResultName": "Farmers' Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "token",
+              "lookupValue": "={{ $json.query.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "e9da7eeb-3764-4f29-a3a4-82faf71e2919",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6eUHcMYvQxkvSift",
+          "name": "SheetCloud2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// This Code node runs INSIDE the Webhook -> Get rows -> Code -> Respond path.\n// It receives ALL farmer rows from Google Sheets at once (no loop),\n// and must return an ARRAY of items — one per farmer — so that\n// \"Respond to Webhook\" (set to \"All Incoming Items\") sends them all back.\n\nfunction erf(x) {\n  const sign = x < 0 ? -1 : 1;\n  x = Math.abs(x);\n  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741,\n        a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;\n  const t = 1 / (1 + p * x);\n  const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);\n  return sign * y;\n}\nfunction normalCDF(z) { return 0.5 * (1 + erf(z / Math.sqrt(2))); }\nfunction computeRiskProbability(thresholdC, meanTempC, stdDev) {\n  const safeStdDev = stdDev > 0.1 ? stdDev : 0.5;\n  const z = (thresholdC - meanTempC) / safeStdDev;\n  const prob = Math.round((1 - normalCDF(z)) * 100);\n  return Math.max(1, Math.min(prob, 99));\n}\n\nconst benchmarks = {\n  \"corn\": { stressC: 30, stressF: 86, impact: \"pollen viability loss\", action: \"Run pre-cooling irrigation before 8:00 AM.\" },\n  \"maize\": { stressC: 30, stressF: 86, impact: \"pollen viability loss\", action: \"Run pre-cooling irrigation before 8:00 AM.\" },\n  \"tomatoes\": { stressC: 29, stressF: 85, impact: \"blossom drop and sunscald\", action: \"Deploy 30% shade netting and mulch the soil.\" },\n  \"soybeans\": { stressC: 32, stressF: 90, impact: \"pod abortion\", action: \"Apply surface irrigation, avoid peak-hour fertilizing.\" },\n  \"lettuce\": { stressC: 24, stressF: 75, impact: \"early bolting\", action: \"Activate overhead misting.\" },\n  \"strawberries\": { stressC: 26, stressF: 78, impact: \"fruit softening\", action: \"Run drip irrigation and root-zone cooling.\" },\n  \"dairy cows\": { stressC: 25, stressF: 77, impact: \"milk yield drop\", action: \"Turn on barn misting/fans, add shade and cool water.\" },\n  \"beef cattle\": { stressC: 28, stressF: 82, impact: \"reduced feed intake\", action: \"Feed early morning/evening, provide shaded area.\" }\n};\n\n// $input.all() gets EVERY row coming from \"Get row(s) in sheet\" — one row per farmer\nconst rows = $input.all();\n\nconst results = rows.map(row => {\n  const farmerData = row.json;\n  const farmerName = farmerData.Name || \"Farmer\";\n  const userCrops = farmerData.crops || \"\";\n\n  let history = [];\n  try {\n    history = farmerData.temperature_history ? JSON.parse(farmerData.temperature_history) : [];\n  } catch (e) {\n    history = [];\n  }\n  // Fallback so the dashboard has something to show even with zero history yet\n  if (history.length === 0) history = [25];\n\n  const currentTempC = history[history.length - 1];\n  const n = history.length;\n  const meanTempC = history.reduce((a, b) => a + b, 0) / n;\n  const variance = history.reduce((sum, val) => sum + Math.pow(val - meanTempC, 2), 0) / (n || 1);\n  const stdDev = Math.sqrt(variance);\n  const zScoreNum = stdDev > 0 ? ((currentTempC - meanTempC) / stdDev) : 0;\n\n  let trend = \"Stable\";\n  if (currentTempC > meanTempC + 1.5) trend = \"Sharply Rising\";\n  else if (currentTempC > meanTempC) trend = \"Slightly Increasing\";\n  else if (currentTempC < meanTempC - 1.5) trend = \"Cooling Down\";\n\n  const parsedItems = userCrops.split(/,|and|\\+/).map(i => i.trim().toLowerCase()).filter(Boolean);\n  let statsPerItem = [];\n  let maxProbability = 0;\n  let totalCumulativeHeat = 0;\n\n  parsedItems.forEach(itemKey => {\n    const matchedKey = Object.keys(benchmarks).find(b => itemKey.includes(b));\n    const displayName = itemKey.charAt(0).toUpperCase() + itemKey.slice(1);\n    const rule = matchedKey ? benchmarks[matchedKey] : { stressC: 28, stressF: 82, impact: \"general heat stress\", action: \"Ensure irrigation or shade.\" };\n\n    let cumulativeHeat = 0;\n    history.forEach(t => { if (t > rule.stressC) cumulativeHeat += (t - rule.stressC); });\n    if (cumulativeHeat > totalCumulativeHeat) totalCumulativeHeat = cumulativeHeat;\n\n    const prob = computeRiskProbability(rule.stressC, meanTempC, stdDev);\n    if (prob > maxProbability) maxProbability = prob;\n\n    const isStressed = currentTempC >= rule.stressC;\n    let level = \"green\";\n    if (isStressed || prob >= 66) level = \"red\";\n    else if (prob >= 31) level = \"yellow\";\n\n    statsPerItem.push({\n      name: displayName,\n      thresholdC: rule.stressC,\n      isStressed,\n      riskProbability: prob,\n      level,\n      action: rule.action,\n      cumulativeHeat: Number(cumulativeHeat.toFixed(1))\n    });\n  });\n\n  const levelOrder = { red: 0, yellow: 1, green: 2 };\n  statsPerItem.sort((a, b) => levelOrder[a.level] - levelOrder[b.level]);\n\n  return {\n    json: {\n      farmerId: farmerData.Id,\n      farmerName: farmerName,\n      timestamp: new Date().toISOString(),\n      currentTempC: currentTempC,\n      windSpeed: farmerData.wind_speed || 10,\n      temperatureHistory: history,\n      movingAverageC: Number(meanTempC.toFixed(1)),\n      trend: trend,\n      zScore: Number(zScoreNum.toFixed(2)),\n      cumulativeThermalStress: Number(totalCumulativeHeat.toFixed(1)),\n      maxRiskProbability: maxProbability,\n      items: statsPerItem\n    }\n  };\n});\n\n// Returning an ARRAY of items — one per farmer.\n// \"Respond to Webhook\" must be set to \"Respond With: All Incoming Items\"\n// so every item here is sent back as a single JSON array.\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "c8b0f4fc-eb89-40c2-b885-332b406ecb07",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "e1686eee-8135-48b0-89e0-f2d3de0116bc",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Chicago",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "10d6d47d-878c-478c-874b-b94d47830598",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "505fbda16e47c4a6701ac746484306a065aaf70608199a31f2043e37fdccd377"
+  },
+  "nodeGroups": [],
+  "id": "hXdyiUCXkJQtLytA",
+  "tags": [
+    {
+      "updatedAt": "2026-08-12T17:59:19.026Z",
+      "createdAt": "2026-08-12T17:59:19.026Z",
+      "id": "d0NmGQgaMPEDlcqK",
+      "name": "المسابقة"
+    }
+  ]
+}
