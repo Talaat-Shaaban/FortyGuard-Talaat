@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statistical Operations - Heat Stress Forecasting System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --soil:#12180F;
+    --soil-2:#1B241A;
+    --card:#202B1E;
+    --line:#33402F;
+    --wheat:#E8A33D;
+    --sky:#5BAFC7;
+    --alert:#D6553D;
+    --text:#EDEBE0;
+    --text-dim:#9CA894;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  html,body{
+    width:100%; 
+    min-height:100vh;
+    background:var(--soil);
+    font-family:'Inter', sans-serif;
+    color:var(--text);
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .slide{
+    width:100%;
+    max-width:1400px;
+    margin:0 auto;
+    background:
+      radial-gradient(circle at 85% -10%, rgba(91,175,199,0.10), transparent 45%),
+      radial-gradient(circle at -5% 110%, rgba(232,163,61,0.10), transparent 45%),
+      var(--soil);
+    padding: clamp(20px, 4vw, 44px) clamp(20px, 5vw, 56px);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    border-radius: 12px;
+  }
+
+  .slide::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 34px);
+    pointer-events:none;
+    border-radius: 12px;
+  }
+
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:1px solid var(--line);
+    padding-bottom:18px;
+    margin-bottom:26px;
+    position:relative;
+    z-index:1;
+    gap: 20px;
+  }
+
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    color:var(--wheat);
+    margin-bottom:8px;
+    text-align:left;
+  }
+
+  h1{
+    font-size: clamp(20px, 2.5vw, 32px);
+    font-weight:700;
+    color:var(--text);
+    letter-spacing:-0.01em;
+  }
+
+  .subtitle{
+    font-size: clamp(12px, 1.2vw, 14.5px);
+    color:var(--text-dim);
+    margin-top:6px;
+    max-width:620px;
+    line-height:1.6;
+  }
+
+  .stress-gauge{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    font-family:'JetBrains Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .gauge-label{
+    font-size:10px;
+    letter-spacing:0.1em;
+    color:var(--text-dim);
+  }
+
+  .gauge-bars{
+    display:flex;
+    gap:3px;
+    align-items:flex-end;
+    height:34px;
+  }
+
+  .gauge-bars span{
+    width:6px;
+    background:var(--line);
+    border-radius:2px;
+  }
+  .gauge-bars span.on{ background: linear-gradient(180deg, var(--wheat), var(--alert)); }
+
+  .grid{
+    flex:1;
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap:16px;
+    position:relative;
+    z-index:1;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .card::before{
+    content:attr(data-tag);
+    position:absolute;
+    right:14px;
+    top:14px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:var(--text-dim);
+    letter-spacing:0.08em;
+  }
+
+  .card-title{
+    font-size:16px;
+    font-weight:600;
+    color:var(--text);
+    margin-top:18px;
+  }
+
+  .formula{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    color:var(--sky);
+    background:rgba(91,175,199,0.08);
+    border:1px solid rgba(91,175,199,0.22);
+    border-radius:6px;
+    padding:7px 10px;
+    text-align:left;
+    width:fit-content;
+    max-width:100%;
+    overflow-x: auto;
+  }
+
+  .card-desc{
+    font-size:12.5px;
+    color:var(--text-dim);
+    line-height:1.6;
+  }
+
+  .card.accent{
+    border-color:rgba(232,163,61,0.35);
+    background:linear-gradient(160deg, rgba(232,163,61,0.09), var(--card) 55%);
+  }
+  .card.accent .formula{
+    color:var(--wheat);
+    background:rgba(232,163,61,0.08);
+    border-color:rgba(232,163,61,0.28);
+  }
+
+  footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:22px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+    position:relative;
+    z-index:1;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .foot-note{
+    font-size:11.5px;
+    color:var(--text-dim);
+    font-family:'JetBrains Mono', monospace;
+    letter-spacing:0.04em;
+  }
+
+  .foot-brand{
+    font-size:12px;
+    color:var(--wheat);
+    font-weight:600;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .stress-gauge {
+      align-self: flex-start;
+      flex-direction: row;
+      gap: 12px;
+    }
+
+    .grid {
+      grid-template-columns: 1fr;
+    }
+
+    footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <header>
+      <div>
+        <div class="eyebrow">STATISTICAL ENGINE — n8n WORKFLOW</div>
+        <h1>Statistical Operations in Heat Stress Analysis</h1>
+        <div class="subtitle">Six sequential statistical operations converting real-time temperature readings into reliable predictive reports for every farmer, free of misleading numbers.</div>
+      </div>
+      <div class="stress-gauge">
+        <div class="gauge-bars">
+          <span class="on" style="height:10px"></span>
+          <span class="on" style="height:16px"></span>
+          <span class="on" style="height:22px"></span>
+          <span style="height:28px"></span>
+          <span style="height:34px"></span>
+        </div>
+        <div class="gauge-label">RISK LEVEL</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card" data-tag="01">
+        <div class="card-title">Moving Average</div>
+        <div class="formula">mean = Σ(temps) / 7</div>
+        <div class="card-desc">Smoothes out single-day fluctuations to establish a solid baseline for the past week's temperature.</div>
+      </div>
+
+      <div class="card" data-tag="02">
+        <div class="card-title">Standard Deviation</div>
+        <div class="formula">σ = √( Σ(t − mean)² / n )</div>
+        <div class="card-desc">Measures weather variance around the mean — forming the foundation for all subsequent calculations.</div>
+      </div>
+
+      <div class="card" data-tag="03">
+        <div class="card-title">Z-Score</div>
+        <div class="formula">Z = (t − mean) / σ</div>
+        <div class="card-desc">Detects whether the daily temperature is an anomaly and tracks sudden heatwaves.</div>
+      </div>
+
+      <div class="card accent" data-tag="04 · CORE">
+        <div class="card-title">Cumulative Normal Distribution</div>
+        <div class="formula">P(risk) = 1 − CDF(Z_threshold)</div>
+        <div class="card-desc">The core engine: converts distance from critical thresholds into real probabilities (not misleading raw percentages) of heat stress within 48 hours.</div>
+      </div>
+
+      <div class="card" data-tag="05">
+        <div class="card-title">Cumulative Stress Units</div>
+        <div class="formula">GDD = Σ max(t − threshold, 0)</div>
+        <div class="card-desc">An established agricultural standard (Growing Degree Days) measuring accumulated damage over time, not just single moments.</div>
+      </div>
+
+      <div class="card" data-tag="06">
+        <div class="card-title">Trend Analysis</div>
+        <div class="formula">trend = t − mean ± 1.5°C</div>
+        <div class="card-desc">Quick weather state classification: stable, rapidly rising, moderately rising, or dropping.</div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="foot-note">Applied to: maize · dairy cows · beef cattle · tomatoes · soybeans · lettuce · strawberries</div>
+      <div class="foot-brand">FortyGuard Statistical AI</div>
+    </footer>
+  </div>
+</body>
+</html>

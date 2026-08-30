@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thermal Stress Dashboard | FortyGuard</title>
+<link href="style.css" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">FORTYGUARD STATISTICAL DASHBOARD</div>
+      <h1>Thermal Stress Assessment</h1>
+    </div>
+    <div id="statusPill" class="status-pill">Connecting…</div>
+  </header>
+
+  <div id="loadingState" style="display:none;">Loading data…</div>
+  <div id="errorState" style="display:none;"></div>
+  <div id="emptyState" style="display:none;">No data available for this access token.</div>
+
+  <div id="summaryRow" class="summary-row" style="display:none;"></div>
+  <div id="farmersGrid" class="farmers-grid"></div>
+
+  <!-- Scientific Methodology Accordion -->
+  <div class="accordion-wrap">
+    <button class="accordion-header" id="accBtn" onclick="toggleAccordion()">
+      <span>💡 Scientific Methodology & Analytical Engine</span>
+      <span class="accordion-icon">▼</span>
+    </button>
+    <div class="accordion-content" id="accContent">
+      <div class="sci-grid">
+        <div class="sci-card">
+          <h4>📊 Z-Score Deviation Index</h4>
+          <p>Measures how severely current local thermal conditions deviate from the historical 7-day baseline average:</p>
+          <div class="sci-formula">Z = (X - μ) / σ</div>
+          <p>A score exceeding +1.0 indicates a sudden, critical thermal shock requiring immediate intervention.</p>
+        </div>
+        <div class="sci-card">
+          <h4>🔥 Cumulative Thermal Stress</h4>
+          <p>Calculated in <strong>°C-days</strong> above critical physiological thresholds. Prolonged heat build-up suppresses immune function and drastically reduces yield efficiency over time.</p>
+        </div>
+        <div class="sci-card">
+          <h4>🛡️ Proactive Mitigation Framework</h4>
+          <p>Triggers dynamic, livestock & crop-specific scientific protocols (evaporative misting, nocturnal feeding,ABA anti-transpirants) to prevent thermal losses before damage occurs.</p>
+        </div>
+        <a class="more" href="StatisticalOperations.html">More Details >></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="main.js"></script>
+  
+</body>
+</html>
