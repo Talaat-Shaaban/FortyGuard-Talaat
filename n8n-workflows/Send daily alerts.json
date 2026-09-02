@@ -170,14 +170,14 @@
           "value": "1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0",
           "mode": "list",
           "cachedResultName": "Farmers' Data",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit?usp=drivesdk"
+          "cachedResultUrl": "YOUR_LINK_SHEET_GOOGLE"
         },
         "sheetName": {
           "__rl": true,
           "value": "gid=0",
           "mode": "list",
           "cachedResultName": "الورقة1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit#gid=0"
+          "cachedResultUrl": "YOUR_LINK_SHEET_GOOGLE"
         },
         "options": {}
       },
@@ -216,7 +216,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2464,
+        2288,
         -240
       ],
       "id": "f7c0aea0-cb75-4033-9ee7-c31bc32e34ae",
@@ -230,14 +230,14 @@
           "value": "1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0",
           "mode": "list",
           "cachedResultName": "Farmers' Data",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit?usp=drivesdk"
+          "cachedResultUrl": "YOUR_LINK_SHEET_GOOGLE"
         },
         "sheetName": {
           "__rl": true,
           "value": "gid=0",
           "mode": "list",
           "cachedResultName": "الورقة1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit#gid=0"
+          "cachedResultUrl": "YOUR_LINK_SHEET_GOOGLE"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -378,20 +378,6 @@
     },
     {
       "parameters": {
-        "url": "=https://api.open-meteo.com/v1/forecast?latitude={{ $('Get row(s) in sheet1').item.json.latitude }}&longitude={{ $('Get row(s) in sheet1').item.json.longitude }}&current_weather=true&timezone=auto",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        2192,
-        -240
-      ],
-      "id": "bf8eb51e-b5c5-4e63-89b4-e88c3361c469",
-      "name": "HTTP Request"
-    },
-    {
-      "parameters": {
         "content": "# Retrieving the temperature from the FortyGuard API",
         "height": 384,
         "width": 1328,
@@ -509,7 +495,7 @@
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "Code in JavaScript3",
             "type": "main",
             "index": 0
           }
@@ -548,17 +534,6 @@
           }
         ]
       ]
-    },
-    "HTTP Request": {
-      "main": [
-        [
-          {
-            "node": "Code in JavaScript3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": true,
@@ -570,7 +545,7 @@
     "timezone": "America/Chicago",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "d7fa85ad-5e70-4355-b317-8d02d797a089",
+  "versionId": "a8e8954e-8b7c-4fe4-a1ff-67e1d0ab89fb",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "505fbda16e47c4a6701ac746484306a065aaf70608199a31f2043e37fdccd377"
