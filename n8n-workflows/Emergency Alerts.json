@@ -52,7 +52,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        2176,
+        2288,
         0
       ],
       "id": "b0d35a50-b8b4-4a92-9066-c6054f5d2fc1",
@@ -171,14 +171,14 @@
           "value": "1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0",
           "mode": "list",
           "cachedResultName": "Farmers' Data",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit?usp=drivesdk"
+          "cachedResultUrl": ""
         },
         "sheetName": {
           "__rl": true,
           "value": "gid=0",
           "mode": "list",
           "cachedResultName": "الورقة1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wc8p7Gro9mepmY72dHWZzGtAIiGVOkPqloU-kmVSgT0/edit#gid=0"
+          "cachedResultUrl": ""
         },
         "options": {}
       },
@@ -283,20 +283,6 @@
     },
     {
       "parameters": {
-        "url": "=https://api.open-meteo.com/v1/forecast?latitude={{ $('Get row(s) in sheet1').item.json.latitude }}&longitude={{ $('Get row(s) in sheet1').item.json.longitude }}&current_weather=true&timezone=auto",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        2400,
-        0
-      ],
-      "id": "43c56ab3-f3d2-47d4-aed0-eace85a2a5c6",
-      "name": "HTTP Request"
-    },
-    {
-      "parameters": {
         "content": "# Retrieving the temperature from the FortyGuard API",
         "height": 368,
         "width": 1392,
@@ -361,7 +347,7 @@
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "Code in JavaScript3",
             "type": "main",
             "index": 0
           }
@@ -486,17 +472,6 @@
         ],
         []
       ]
-    },
-    "HTTP Request": {
-      "main": [
-        [
-          {
-            "node": "Code in JavaScript3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": true,
@@ -508,7 +483,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "e0893818-6691-490a-b091-6e94839c2137",
+  "versionId": "c138a48c-ddab-49a5-a551-3a5016fa9164",
   "meta": {
     "instanceId": "505fbda16e47c4a6701ac746484306a065aaf70608199a31f2043e37fdccd377"
   },
